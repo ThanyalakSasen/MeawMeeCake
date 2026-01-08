@@ -1,0 +1,26 @@
+const express = require("express");
+const router = express.Router();
+
+const authCtrl = require("../controllers/authController");
+const { protect } = require("../middlewares/authMiddleware");
+
+// Public routes
+router.post("/register", authCtrl.register);
+router.post("/login", authCtrl.login);
+router.get("/verify-email/:token", authCtrl.verifyEmail);
+router.post("/resend-verification", authCtrl.resendVerification);
+router.post("/forgot-password", authCtrl.forgotPassword);
+router.post("/reset-password/:token", authCtrl.resetPassword);
+
+// Google OAuth
+router.get("/google", authCtrl.googleAuth);
+router.get("/google/callback", authCtrl.googleAuthCallback);
+
+// After verify email (Google)
+router.post("/complete-profile", protect, authCtrl.completeProfile);
+
+// Protected
+router.get("/me", protect, authCtrl.getMe);
+router.post("/logout", protect, authCtrl.logout);
+
+module.exports = router;
