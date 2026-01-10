@@ -6,33 +6,28 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint ."
   },
   "dependencies": {
-    "@fortawesome/fontawesome-free": "^7.1.0",
-    "axios": "^1.13.2",
-    "bootstrap": "^5.3.8",
-    "date-fns": "^4.1.0",
-    "react": "^19.2.0",
-    "react-bootstrap": "^2.10.10",
-    "react-datepicker": "^9.1.0",
-    "mdb-react-ui-kit": "^6.0.0",
-    "react-dom": "^19.2.0",
-    "react-router-dom": "^7.11.0"
+    "@fortawesome/fontawesome-free": "^6.5.2",
+    "axios": "^1.6.8",
+    "bootstrap": "^5.3.3",
+    "date-fns": "^3.6.0",
+    "mdb-react-ui-kit": "^6.3.0",
+    "react": "^18.2.0",
+    "react-bootstrap": "^2.10.2",
+    "react-datepicker": "^8.1.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.3"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "vite": "npm:rolldown-vite@7.2.5"
-  },
-  "overrides": {
-    "vite": "npm:rolldown-vite@7.2.5"
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@vitejs/plugin-react": "^4.3.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.6",
+    "vite": "^5.4.0"
   }
 }

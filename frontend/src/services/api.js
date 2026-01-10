@@ -1,5 +1,6 @@
 import axios from "axios";
 
+// Base API URL configuration
 const API_URL = "http://localhost:3000/api";
 
 // Create axios instance
@@ -7,7 +8,7 @@ const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
   headers: {
-    "Content-Type": "application/json",
+    "Content-Type": "application/json",  // Default content type for requests as JSON บอกว่า body เป็น JSON
   },
 });
 
@@ -86,15 +87,9 @@ export const authAPI = {
     }
   },
 
-  // Get current user
-  getCurrentUser: async () => {
-    const response = await api.get("/auth/me");
-    return response;
-  },
-
   // Verify email
   verifyEmail: async (token) => {
-    const response = await api.get(`/auth/verify-email/${token}`);
+    const response = await api.get(`/email/verify-email/${token}`);
     return response;
   },
 
@@ -108,6 +103,12 @@ export const authAPI = {
   checkAuth: async () => {
     const response = await api.get("/auth/check");
     return response;
+  },
+  // Get current logged-in user (maps backend /auth/profile to frontend expectation)
+  getCurrentUser: async () => {
+    const resp = await api.get("/auth/profile");
+    // backend returns { user: ... } — map to { data: { success: true, data: { user } } }
+    return { data: { success: true, data: { user: resp.data.user } } };
   },
 };
 

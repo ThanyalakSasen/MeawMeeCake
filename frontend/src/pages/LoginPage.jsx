@@ -70,8 +70,6 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
               />
 
-              <InputCheckbox label="จำไว้ใช้คราวหน้า" />
-
               <ButtonSubmit
                 type="submit"
                 textButton={loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}

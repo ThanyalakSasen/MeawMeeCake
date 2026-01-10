@@ -8,7 +8,7 @@ import { authAPI } from "../services/api";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<user | null>(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 

@@ -31,7 +31,7 @@ exports.googleLogin = async (req, res) => {
                 role: "Customer",
                 user_phone: "-", 
                 user_img: picture,
-                isEmailVerified: false, // ❗ ต้องเป็น false สำหรับครั้งแรก
+                isEmailVerified: false,
                 emailVerifyToken: token
             });
 
@@ -55,7 +55,7 @@ exports.googleLogin = async (req, res) => {
 
         // --- กรณีที่ยืนยันเมลแล้ว ถึงจะยอมให้ Login ---
         req.login(user, (err) => {
-            if (err) return res.status(500).json({ message: "Login failed" });
+            if (err) return res.status(500).json({ message: "การเข้าสู่ระบบล้มเหลว" });
             
             return res.status(200).json({
                 success: true,
@@ -95,7 +95,8 @@ exports.verifyEmail = async (req, res) => {
         await user.save();
 
         console.log("ยืนยันอีเมลสำเร็จสำหรับ:", user.email);
-        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?success=true`);
+        // Redirect to frontend dashboard so SPA can decide next steps
+        res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard?verified=true`);
         
     } catch (err) {
         console.error("Verify Email Error:", err);
@@ -118,12 +119,11 @@ exports.register = async (req, res) => {
         } = req.body;
 
         if (!email || !password || !user_fullname) {
-            return res.status(400).json({ message: "Missing required fields" });
+            return res.status(400).json({ message: "กรุณากรอกข้อมูลให้ครบถ้วน" });
         }
 
         let existing = await User.findOne({ email });
-        if (existing) return res.status(400).json({ message: "Email already registered" });
-
+        if (existing) return res.status(400).json({ message: "อีเมลนี้ถูกใช้แล้ว" });
         const token = crypto.randomBytes(32).toString("hex");
 
         const user = await User.create({
@@ -143,26 +143,31 @@ exports.register = async (req, res) => {
         // send verification email (best-effort)
         await sendVerifyEmail(user.email, token);
 
-        return res.status(201).json({ success: true, message: "Registered. Verify your email." });
+        return res.status(201).json({ success: true, message: "ลงทะเบียนสำเร็จ โปรดยืนยันอีเมลของคุณ" });
     } catch (err) {
         console.error("Register error:", err);
-        return res.status(500).json({ message: "Server error" });
+        return res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" });
     }
 };
 
 // --- Login (local) ---
 exports.login = async (req, res, next) => {
     try {
-        const { email, password } = req.body;
-        if (!email || !password) return res.status(400).json({ message: "Missing credentials" });
+        const { email, password, role: requestedRole } = req.body;
+        if (!email || !password) return res.status(400).json({ message: "ไม่พบอีเมลหรือรหัสผ่าน กรุณากรอกข้อมูลให้ครบถ้วน" });
 
         const user = await User.findOne({ email });
-        if (!user) return res.status(401).json({ message: "Invalid credentials" });
+        if (!user) return res.status(401).json({ message: "ไม่พบผู้ใช้ที่มีอีเมลนี้ กรุณาตรวจสอบอีเมลของคุณอีกครั้ง" });
 
         const isMatch = await user.comparePassword(password);
-        if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
+        if (!isMatch) return res.status(401).json({ message: "รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง" });
 
-        if (!user.isEmailVerified) return res.status(403).json({ message: "Please verify your email" });
+        if (!user.isEmailVerified) return res.status(403).json({ message: "กรุณายืนยันอีเมลของคุณก่อนเข้าสู่ระบบ" });
+
+        // If the frontend requested a specific role, ensure the user has it
+        if (requestedRole && user.role && user.role.toLowerCase() !== requestedRole.toLowerCase()) {
+            return res.status(403).json({ message: "ไม่สามารถเข้าสู่ระบบด้วยบทบาทที่ร้องขอได้" });
+        }
 
         // establish session
         req.login(user, (err) => {
