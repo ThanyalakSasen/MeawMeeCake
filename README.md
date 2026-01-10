@@ -1,5 +1,5 @@
 frontend
-    1. mpn install
+    1. npm install
     2. npm install react-router-dom
     3. npm install react-bootstrap bootstrap
     4. npm install axios 

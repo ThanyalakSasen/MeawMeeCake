@@ -74,8 +74,8 @@ export default function Register() {
       });
 
       console.log("สมัครสำเร็จด้วย Local (provider: 'local')", response.data);
-      alert("สมัครสมาชิกเรียบร้อย กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีของคุณ");
-      navigate("/verify-email");
+        alert("สมัครสมาชิกเรียบร้อยแล้ว — อีเมลยืนยันถูกส่งแล้ว กรุณาตรวจสอบอีเมลและล็อกอิน");
+        navigate("/login");
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const message =
@@ -142,6 +142,9 @@ export default function Register() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                  <p style={{ fontSize: "12px", color: "red" }}>
+                    กรุณากรอกรหัสผ่านอย่างน้อย 6 ตัวอักษรขึ้นไป
+                  </p>
                 </>
               ) : null}
               <Row>
