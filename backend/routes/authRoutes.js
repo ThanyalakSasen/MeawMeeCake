@@ -1,20 +1,30 @@
-const router = require("express").Router();
-const { isAuthenticated } = require("../middlewares/authMiddleware");
-const authController = require("../controllers/authController");
+const express = require("express");
+const router = express.Router();
 
-// 🔹 Google login (ใช้ POST ตามที่ React ส่งมา)
-router.post("/google", authController.googleLogin);
-// Local register & login
-router.post("/register", authController.register);
-router.post("/login", authController.login);
+const authCtrl = require("../controllers/authController");
+const { protect } = require("../middlewares/authMiddleware");
 
-router.get("/test", (req, res) => {
-  res.send("user route OK");
-});
+// Public routes
+router.post("/register", authCtrl.register);
+router.post("/login", authCtrl.login);
+router.get("/verify-email/:token", authCtrl.verifyEmail);
+router.post("/resend-verification", authCtrl.resendVerification);
 
-router.get("/profile", isAuthenticated, (req, res) => {
-  res.json({ user: req.user }); // สำหรับ SPA (React) ควรส่งเป็น JSON
-});
+router.post("/forgot-password", authCtrl.forgotPassword);
+router.get("/verify-reset-token/:token", authCtrl.verifyResetToken);
+router.post("/reset-password/:token", authCtrl.resetPassword);
 
+// Google OAuth
+router.get("/google", authCtrl.googleAuth);
+router.get("/google/callback", authCtrl.googleAuthCallback);
+
+// Protected
+router.get("/me", protect, authCtrl.getMe);
+router.post("/logout", protect, authCtrl.logout);
+
+
+//Profile management (Protected)
+router.put('/complete-profile', protect, authCtrl.completeProfile);  // ✅ กรอกข้อมูลครั้งแรก
+router.put('/update-profile', protect, authCtrl.updateProfile);      // ✅ แก้ไขข้อมูลภายหลัง
 
 module.exports = router;

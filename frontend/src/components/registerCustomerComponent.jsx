@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { authAPI } from "../utils/api";
-import InputField from "./inputField";
 import InputDate from "./inputDate";
 import Select from "./select";
 import ButtonSubmit from "./button";

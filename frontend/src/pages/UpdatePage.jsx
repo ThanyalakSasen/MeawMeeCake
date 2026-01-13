@@ -1,42 +1,86 @@
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import authAPI from "../services/authService";
-import { InputField } from "../components/InputField";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import axios from "axios";
+import { Container, Row, Col, Form } from "react-bootstrap";
+import { useAuth } from "../context/AuthContext";
+
 import InputDate from "../components/inputDate";
+import { InputField } from "../components/InputField";
 import { Select } from "../components/select";
 import ButtonSubmit from "../components/button";
-import axios from "axios";
-import { Col, Container, Row, Form } from "react-bootstrap";
 import loginPicture from "../assets/pictures/LoginRegisterPicture.png";
 
-// ตัวอย่างรายการวัตถุดิบที่อาจแพ้
 const allergyOptions = [
   { value: "milk", label: "นม" },
   { value: "eggs", label: "ไข่" },
   { value: "peanuts", label: "ถั่วลิสง" },
   { value: "soy", label: "ถั่วเหลือง" },
-  { value: "wheat", label: "ข้าวสาลี/กลูเตน" },
+  { value: "wheat", label: "ข้าวสาลี / กลูเตน" },
   { value: "fish", label: "ปลา" },
   { value: "shellfish", label: "อาหารทะเล" },
-  { value: "nuts", label: "ถั่วต่างๆ" },
+  { value: "nuts", label: "ถั่วต่าง ๆ" },
 ];
 
-export default function Register() {
+export default function UpdatePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { setUser } = useAuth();
+
   const [fullname, setFullname] = useState("");
-  const [birthdate, setBirthdate] = useState("");
   const [email, setEmail] = useState("");
-  const googleId = useLocation().state?.googleId || "";
-  const [password, setPassword] = useState("");
+  const [birthdate, setBirthdate] = useState("");
   const [phone, setPhone] = useState("");
   const [hasAllergies, setHasAllergies] = useState(null);
   const [selectedAllergy, setSelectedAllergy] = useState("");
   const [selectedAllergies, setSelectedAllergies] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  /* -----------------------------
+     1️⃣ รับ token จาก Google callback
+  ------------------------------*/
+  useEffect(() => {
+    const tokenFromUrl = searchParams.get("token");
+    if (tokenFromUrl) {
+      localStorage.setItem("token", tokenFromUrl);
+      console.log("🔐 SAVE TOKEN FROM CALLBACK");
+    }
+  }, [searchParams]);
+
+  /* -----------------------------
+     2️⃣ โหลดข้อมูลผู้ใช้
+  ------------------------------*/
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return navigate("/login");
+
+        const res = await axios.get(
+          "http://localhost:3000/api/auth/me",
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        console.log("👤 LOAD USER:", res.data.user);
+
+        const user = res.data.user;
+        setFullname(user.user_fullname || "");
+        setEmail(user.email || "");
+        setSelectedAllergies(user.user_allergies || []);
+      } catch (err) {
+        console.error("❌ LOAD USER ERROR:", err);
+        navigate("/login");
+      }
+    };
+
+    fetchUser();
+  }, [navigate]);
+
+  /* -----------------------------
+     Allergies handlers
+  ------------------------------*/
   const handleHasAllergiesChange = (value) => {
     setHasAllergies(value);
-    if (value === false) {
+    if (!value) {
       setSelectedAllergies([]);
       setSelectedAllergy("");
     }
@@ -49,128 +93,114 @@ export default function Register() {
     }
   };
 
-  const handleRemoveAllergy = (allergyValue) => {
-    setSelectedAllergies(selectedAllergies.filter((a) => a !== allergyValue));
+  const handleRemoveAllergy = (value) => {
+    setSelectedAllergies(selectedAllergies.filter((a) => a !== value));
   };
-
   const getAllergyLabel = (value) => {
     const option = allergyOptions.find((opt) => opt.value === value);
     return option ? option.label : value;
   };
 
+  /* -----------------------------
+     3️⃣ Submit อัปเดตโปรไฟล์
+  ------------------------------*/
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (
+      !birthdate ||
+      !phone ||
+      hasAllergies === null ||
+      (hasAllergies && selectedAllergies.length === 0)
+    ) {
+      alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await authAPI.register({
-        user_fullname: fullname,
-        email: email,
-        password: password,
-        user_phone: phone,
-        user_birthdate: birthdate,
-        user_allergies: selectedAllergies,
-        ...(googleId && { googleId: googleId }),
-      });
+      const token = localStorage.getItem("token");
 
-      console.log("สมัครสำเร็จด้วย Local (provider: 'local')", response.data);
-      alert("สมัครสมาชิกเรียบร้อย กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีของคุณ");
-      navigate("/verify-email");
+      const payload = {
+        user_birthdate: birthdate,
+        user_phone: phone,
+        user_allergies: hasAllergies ? selectedAllergies : [],
+        profileCompleted: true,
+      };
+
+      console.log("📤 UPDATE PAYLOAD:", payload);
+
+      const res = await axios.put(
+        "http://localhost:3000/api/auth/complete-profile",
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      console.log("✅ UPDATE RESPONSE:", res.data);
+
+      // 🔥 อัปเดต user ใน Context
+      setUser(res.data.user);
+
+      navigate("/dashboard");
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const message =
-          error.response?.data?.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก";
-        alert(message);
-        console.log("สมัครไม่สำเร็จ:", message);
-        console.error("Error details:", error.response?.data);
-      }
+      console.error("❌ UPDATE ERROR:", error);
+      alert(
+        axios.isAxiosError(error)
+          ? error.response?.data?.message || "เกิดข้อผิดพลาด"
+          : "เกิดข้อผิดพลาด"
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const location = useLocation();
-  const isRegisterWithGoogle = location.state?.isRegisterWithGoogle;
-
+  /* -----------------------------
+     UI
+  ------------------------------*/
   return (
     <Container fluid>
       <Row style={{ display: "flex", width: "100%" }}>
         <Col sm={4} style={{ padding: 0 }}>
-          <img
-            src={loginPicture}
-            alt="Login"
-            style={{ maxWidth: "100%", height: "auto" }}
-          />
+          <img src={loginPicture} alt="Login" style={{ maxWidth: "100%", height: "auto" }} />
         </Col>
+
         <Col sm={8} style={{ display: "flex", padding: "0" }}>
-          <div
-            style={{
+          <div style={{
               width: "100%",
               justifyItems: "center",
               alignItems: "center",
               margin: "10% 20%",
-            }}
-          >
+            }}>
             <h4 style={{ marginBottom: "24px", fontWeight: "bold" }}>
-              สมัครสมาชิก
+              อัปเดตข้อมูลผู้ใช้
             </h4>
 
             <form onSubmit={handleSubmit} style={{ width: "100%" }}>
-              <InputField
-                label="ชื่อผู้ใช้งาน"
-                placeholder="ชื่อ - นามสกุล"
-                type="text"
-                value={fullname}
-                onChange={(e) => setFullname(e.target.value)}
-                required
-              />
-              <InputField
-                label="อีเมล"
-                placeholder="อีเมล"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <InputField label="ชื่อผู้ใช้" value={fullname} disabled />
+              <InputField label="อีเมล" value={email} disabled />
 
-              {!isRegisterWithGoogle ? (
-                <>
-                  <InputField
-                    label="รหัสผ่าน"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <p style={{ fontSize: "12px", color: "red" }}>
-                    กรุณากรอกรหัสผ่านอย่างน้อย 6 ตัวอักษรขึ้นไป
-                  </p>
-                </>
-              ) : null}
               <Row>
                 <Col md={6}>
                   <InputDate
                     label="วันเกิด"
                     value={birthdate}
-                    onChange={(value) =>
+                    onChange={(date) =>
                       setBirthdate(
-                        value ? value.toISOString().split("T")[0] : ""
+                        date ? date.toISOString().split("T")[0] : ""
                       )
                     }
-                    required
                   />
                 </Col>
 
                 <Col md={6}>
                   <InputField
-                    label="เบอร์โทรติดต่อ"
-                    placeholder="0801234567"
-                    type="text"
+                    label="เบอร์โทร"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    required
                     maxLength={10}
                     pattern="[0-9]*"
+                    required
                   />
                 </Col>
               </Row>

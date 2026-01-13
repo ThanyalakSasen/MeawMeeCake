@@ -1,7 +1,6 @@
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
-
-
+const crypto = require('crypto');
 const Schema = mongoose.Schema
 
 const userSchema = new Schema({
@@ -63,6 +62,10 @@ const userSchema = new Schema({
     type: Boolean,
     default: false
   },
+  profileCompleted: {
+  type: Boolean,
+  default: false
+  },
 
   // ===== Employee only =====
   emp_position: {
@@ -110,6 +113,21 @@ const userSchema = new Schema({
     type: Boolean,
     default: true
   },
+  resetPasswordToken: {
+    type: String,
+    default: null
+  },
+  
+  resetPasswordTokenExpiry: {
+    type: Date,
+    default: null
+  },
+
+ 
+  
+  verificationTokenExpiry: {
+    type: Date,
+    default: null},
 
   deletedAt: {
     type: Date,
@@ -119,20 +137,52 @@ const userSchema = new Schema({
 }, { timestamps: true })
 
 
-userSchema.pre('save', async function () {
-  if (!this.password) return;
+userSchema.pre("save", async function () {
+  // ถ้าไม่ได้มีการเปลี่ยนรหัสผ่าน ให้หยุดการทำงาน (Return) ทันที
+  if (!this.isModified("password")) return;
 
-  if (this.isModified('password')) {
+  try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    // ไม่ต้องเรียก next() เพราะเป็น async function
+  } catch (err) {
+    throw new Error(err); // โยน Error เพื่อให้ Mongoose จัดการ
   }
 });
 
+// 2. ส่วนเปรียบเทียบรหัสผ่าน
+userSchema.methods.matchPassword = async function(enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
 
-userSchema.methods.comparePassword = function (candidatePassword) {
-  if (!this.password) return false
-  return bcrypt.compare(candidatePassword, this.password)
-}
+// 3. ส่วนสร้าง Verification Token (สำหรับการยืนยันอีเมล)
+userSchema.methods.createVerificationToken = function() {
+  const token = crypto.randomBytes(32).toString('hex');
+  
+  // *** สำคัญ: ต้องเป็น emailVerifyToken ให้ตรงกับ Schema และ Controller ***
+  this.emailVerifyToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+  
+  this.verificationTokenExpiry = Date.now() + 24 * 60 * 60 * 1000; 
+  
+  return token;
+};
+
+// 4. ส่วนสร้าง Reset Password Token (สำหรับการลืมรหัสผ่าน)
+userSchema.methods.createResetPasswordToken = function () {
+  const token = crypto.randomBytes(32).toString("hex");
+
+  this.resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+
+  this.resetPasswordTokenExpiry = Date.now() + 60 * 60 * 1000; // 1 ชม.
+
+  return token;
+};
 
 
 module.exports = mongoose.model('User', userSchema)

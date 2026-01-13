@@ -1,14 +1,15 @@
+// Login.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { InputField } from "../components/InputField";
 import InputCheckbox from "../components/inputcheckbox";
 import ButtonSubmit from "../components/button";
-import { authAPI } from "../services/api";
+import { authAPI } from "../services/authService";
 import axios from "axios";
 import { Col, Container, Row } from "react-bootstrap";
 import loginPicture from "../assets/pictures/LoginRegisterPicture.png";
 import googleLogo from "../assets/pictures/googleLogo.svg";
-
+import { useAuth } from '../context/AuthContext'; 
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -16,27 +17,36 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  
+  // ส่วนหนึ่งของ Login.jsx
+const { checkAuth } = useAuth(); 
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      await authAPI.login(email, password);
-      navigate("/dashboard");
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 403) {
-        alert("กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ");
-      } else {
-        alert("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
-      }
-    } finally {
-      setLoading(false);
+  try {
+    // authAPI.login ควรทำการเก็บ localStorage.setItem('token', ...) ไว้ข้างในแล้ว
+    await authAPI.login(email, password);
+    
+    // ✅ เรียกใช้เพื่ออัปเดตข้อมูล User ใน Global State
+    await checkAuth(); 
+    
+    navigate("/dashboard");
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+      alert("กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ");
+    } else {
+      alert("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:3000/api/auth/google";
+    // ใช้ authAPI แทนการ hardcode URL
+    window.location.href = authAPI.getGoogleAuthUrl();
   };
 
   return (
@@ -69,6 +79,8 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+
+              <InputCheckbox label="จำไว้ใช้คราวหน้า" />
 
               <ButtonSubmit
                 type="submit"

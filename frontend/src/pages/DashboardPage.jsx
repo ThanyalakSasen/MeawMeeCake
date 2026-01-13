@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState  } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Navbar, Nav, Dropdown, Spinner } from "react-bootstrap";
 import AdminDashboardComponent from "../components/AdminDashboardComponent";
 import {CustomerDashboardComponent} from "../components/CustomerDashboardComponent";
 import {EmployeeDashboardComponent} from "../components/EmployeeDashboardComponent";
-import { authAPI } from "../services/api";
+import { authAPI } from "../services/authService";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -15,6 +15,7 @@ export default function Dashboard() {
   useEffect(() => {
     const initDashboard = async () => {
       try {
+        
         // Check if token exists
         const token = localStorage.getItem("token");
         if (!token) {
@@ -35,10 +36,18 @@ export default function Dashboard() {
 
         // Fetch current user from API to ensure data is up-to-date
         const response = await authAPI.getCurrentUser();
-        if (response.data.success && response.data.data) {
-          const userData = response.data.data.user;
-          setUser(userData);
-          localStorage.setItem("user", JSON.stringify(userData));
+        if (response && response.success) {
+          const userData = response.user || (response.data && response.data.user);
+          if (userData) {
+            // 🔴 ตรวจสอบว่ากรอกข้อมูลครบหรือยัง (สำหรับ Google Login)
+            if (userData.profileCompleted === false) {
+              navigate("/complete-profile", { replace: true });
+              return;
+            }
+
+            setUser(userData);
+            localStorage.setItem("user", JSON.stringify(userData));
+          }
         }
       } catch (error) {
         console.error("Dashboard init error:", error);
