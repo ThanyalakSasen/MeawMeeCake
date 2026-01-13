@@ -1,5 +1,3 @@
 # environment variables
-.env
-backend/.env
-frontend/.env
-Login(all)completed/
+backend/node_modules
+frontend/node_modules
