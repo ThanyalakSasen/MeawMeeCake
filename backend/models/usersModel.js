@@ -123,6 +123,8 @@ const userSchema = new Schema({
     type: Date,
     default: null
   },
+
+ 
   
   verificationTokenExpiry: {
     type: Date,
@@ -136,10 +138,17 @@ const userSchema = new Schema({
 }, { timestamps: true })
 
 
-// 1. ส่วน Hash Password (แบบที่คุณแจ้งว่าใช้ได้)
 userSchema.pre("save", async function () {
+  // ถ้าไม่ได้มีการเปลี่ยนรหัสผ่าน ให้หยุดการทำงาน (Return) ทันที
   if (!this.isModified("password")) return;
-  this.password = await bcrypt.hash(this.password, 10);
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    // ไม่ต้องเรียก next() เพราะเป็น async function
+  } catch (err) {
+    throw new Error(err); // โยน Error เพื่อให้ Mongoose จัดการ
+  }
 });
 
 // 2. ส่วนเปรียบเทียบรหัสผ่าน
@@ -163,18 +172,19 @@ userSchema.methods.createVerificationToken = function() {
 };
 
 // 4. ส่วนสร้าง Reset Password Token (สำหรับการลืมรหัสผ่าน)
-userSchema.methods.createResetPasswordToken = function() {
-  const token = crypto.randomBytes(32).toString('hex');
-  
+userSchema.methods.createResetPasswordToken = function () {
+  const token = crypto.randomBytes(32).toString("hex");
+
   this.resetPasswordToken = crypto
-    .createHash('sha256')
+    .createHash("sha256")
     .update(token)
-    .digest('hex');
-  
-  this.resetPasswordTokenExpiry = Date.now() + 60 * 60 * 1000; // 1 hour
-  
+    .digest("hex");
+
+  this.resetPasswordTokenExpiry = Date.now() + 60 * 60 * 1000; // 1 ชม.
+
   return token;
 };
+
 
 module.exports = mongoose.model('User', userSchema)
 

@@ -17,8 +17,7 @@ const sendTokenResponse = (user, statusCode, res) => {
   
   const options = {
     expires: new Date(
-      Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000
-    ),
+      Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict'
@@ -32,10 +31,7 @@ const sendTokenResponse = (user, statusCode, res) => {
       email: user.email,
       name: user.user_fullname,
       role: user.role,
-      isVerified: user.isEmailVerified,
-      phone: user.user_phone,
-      birthDate: user.user_birthdate,
-      allergies: user.user_allergies
+      isVerified: user.isEmailVerified
     }
   });
 };
@@ -51,7 +47,8 @@ exports.register = async (req, res, next) => {
       password, 
       user_phone, 
       user_birthdate, 
-      user_allergies 
+      user_allergies,
+      
     } = req.body;
     
     // Validation
@@ -77,7 +74,12 @@ exports.register = async (req, res, next) => {
         message: 'อีเมลนี้ถูกใช้งานแล้ว'
       });
     }
-    
+    const token = crypto.randomBytes(32).toString("hex");
+
+    const hashedToken = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
     // สร้าง user ใหม่
     const user = await User.create({
       user_fullname,
@@ -89,49 +91,114 @@ exports.register = async (req, res, next) => {
       authProvider: 'local',
       role: 'Customer',
       isEmailVerified: false,
-      profileCompleted: true 
+      profileCompleted: true ,
+      emailVerifyToken: hashedToken, 
+      verificationTokenExpiry: Date.now() + 24 * 60 * 60 * 1000, // 24 ชม.
+      isActive: true
     });
     
-    // สร้าง verification token
-    const verificationToken = user.createVerificationToken();
-    await user.save({ validateBeforeSave: false });
     
     // ส่งอีเมลยืนยัน
-    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${token}`;
     
     const message = `
       <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #f97316 0%, #fb923c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
-          .button { display: inline-block; padding: 15px 30px; background-color: #f97316; color: white; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }
-          .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>🧁 ยินดีต้อนรับสู่ร้านเบเกอร์รี่!</h1>
-          </div>
-          <div class="content">
-            <p>สวัสดีคุณ <strong>${user_fullname}</strong></p>
-            <p>ขอบคุณที่สมัครสมาชิกกับเรา กรุณายืนยันอีเมลของคุณเพื่อเริ่มใช้งาน</p>
-            <div style="text-align: center;">
-              <a href="${verificationUrl}" class="button">✉️ ยืนยันอีเมล</a>
-            </div>
-            <p style="color: #6b7280; font-size: 14px;">ลิงก์นี้จะหมดอายุใน 24 ชั่วโมง</p>
-            <p style="color: #6b7280; font-size: 14px;">หากคุณไม่ได้สมัครสมาชิก กรุณาเพิกเฉยอีเมลนี้</p>
-          </div>
-          <div class="footer">
-            <p>© 2024 ร้านเบเกอร์รี่ของเรา</p>
-          </div>
-        </div>
-      </body>
-      </html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { 
+      margin: 0; 
+      padding: 0; 
+      background-color: #FFFDF5; 
+      font-family: 'Segoe UI', 'Kanit', Tahoma, sans-serif; 
+    }
+    .container { 
+      max-width: 500px; 
+      margin: 40px auto; 
+      background: #ffffff; 
+      border-radius: 30px; 
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(245, 224, 150, 0.3);
+      border: 1px solid #FDF2D2;
+    }
+    .header { 
+      background-color: #FFD95A; 
+      padding: 40px 20px; 
+      text-align: center; 
+    }
+    .header h1 { 
+      margin: 0; 
+      color: #5D4037; 
+      font-size: 26px;
+      letter-spacing: 1px;
+    }
+    .content { 
+      padding: 40px 30px; 
+      color: #5D4037;
+      line-height: 1.6;
+      text-align: center;
+    }
+    .user-name {
+      color: #8D6E63;
+      font-size: 20px;
+      display: block;
+      margin-bottom: 10px;
+    }
+    .button { 
+      display: inline-block; 
+      padding: 16px 40px; 
+      background-color: #FFD95A; 
+      color: #5D4037 !important; 
+      text-decoration: none; 
+      border-radius: 50px; 
+      margin: 30px 0; 
+      font-weight: bold; 
+      box-shadow: 0 4px 0 #F4B400;
+      transition: all 0.2s;
+    }
+    .footer { 
+      text-align: center; 
+      padding: 25px; 
+      background-color: #FFFEFA;
+      color: #A1887F; 
+      font-size: 13px;
+      border-top: 1px dashed #FDF2D2;
+    }
+    .cat-icon {
+      font-size: 45px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="cat-icon">🐾</div>
+      <h1>เหมียวมี เค้ก</h1>
+      <p style="margin: 5px 0 0; color: #8D6E63; font-size: 14px;">Happiness is Homemade</p>
+    </div>
+    
+    <div class="content">
+      <span class="user-name">สวัสดีคุณ <strong>${user_fullname}</strong> 🐱</span>
+      <p>ยินดีต้อนรับสู่ครอบครัวเหมียวมีนะคะ!<br>
+      กรุณากดปุ่มด้านล่างเพื่อยืนยันอีเมลและเริ่มสั่งขนมได้เลยค่ะ</p>
+      
+      <a href="${verificationUrl}" class="button">ยืนยันอีเมลตรงนี้เมี๊ยว~</a>
+      
+      <div style="margin-top: 20px;">
+        <p style="color: #A1887F; font-size: 13px; margin-bottom: 5px;">* ลิงก์นี้จะหมดอายุใน 24 ชั่วโมงเพื่อความปลอดภัย</p>
+        <p style="color: #A1887F; font-size: 13px; margin: 0;">หากคุณไม่ได้สมัครสมาชิก สามารถลบอีเมลนี้ทิ้งได้เลยค่ะ</p>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p><strong>MeawMee Cake & Bakery</strong></p>
+      <p style="margin-top: 10px; opacity: 0.7;">© 2026 MeawMee Cake. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
     `;
     
     try {
@@ -175,10 +242,10 @@ exports.register = async (req, res, next) => {
 // @route   POST /api/auth/login
 // @access  Public
 exports.login = async (req, res, next) => {
-  // เพิ่มบรรทัดนี้เพื่อบอก Browser ว่าห้ามจำผลลัพธ์การ Login นี้
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  
   try {
     const { email, password } = req.body;
+    
     
     if (!email || !password) {
       return res.status(400).json({
@@ -188,14 +255,20 @@ exports.login = async (req, res, next) => {
     }
     
     // หา user และดึง password มาด้วย
-    const user = await User.findOne({ email, isActive: true }).select('+password');
+    const user = await User.findOne({ 
+  email: email.toLowerCase(), 
+  isActive: true 
+}).select('+password');
     
     if (!user) {
+      console.log("Login Debug: User not found for email:", email);
       return res.status(401).json({
         success: false,
         message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
       });
     }
+
+    console.log("Login Debug: User found, hashing comparison starts...");
     
     // ตรวจสอบว่าเป็น local account หรือไม่
     if (user.authProvider !== 'local' || !user.password) {
@@ -207,7 +280,7 @@ exports.login = async (req, res, next) => {
     
     // ตรวจสอบรหัสผ่าน
     const isMatch = await user.matchPassword(password);
-    
+    console.log("Login Debug: Is Password Match? ->", isMatch);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -240,17 +313,11 @@ exports.login = async (req, res, next) => {
 // @access  Public
 exports.verifyEmail = async (req, res) => {
   try {
-    // 1. รับ token จาก URL
-    const rawToken = req.params.token;
-    // 2. ทำ Hash เพื่อไปเทียบกับใน DB (ต้องทำเหมือนกับใน Model)
     
-    const verificationToken = crypto
-      .createHash('sha256')
-      .update(req.params.token)
-      .digest('hex');
+    const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
     
     const user = await User.findOne({
-      emailVerifyToken: verificationToken,
+      emailVerifyToken: hashedToken,
       verificationTokenExpiry: { $gt: Date.now() }
     });
     
@@ -316,17 +383,103 @@ exports.resendVerification = async (req, res, next) => {
     
     const message = `
       <!DOCTYPE html>
-      <html>
-      <body style="font-family: Arial, sans-serif;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2>ยืนยันอีเมลของคุณ</h2>
-          <p>สวัสดีคุณ ${user.user_fullname}</p>
-          <p>กรุณาคลิกปุ่มด้านล่างเพื่อยืนยันอีเมลของคุณ:</p>
-          <a href="${verificationUrl}" style="display: inline-block; padding: 12px 24px; background-color: #f97316; color: white; text-decoration: none; border-radius: 5px; margin: 15px 0;">ยืนยันอีเมล</a>
-          <p style="color: #666; font-size: 14px;">ลิงก์นี้จะหมดอายุใน 24 ชั่วโมง</p>
-        </div>
-      </body>
-      </html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { 
+      margin: 0; 
+      padding: 0; 
+      background-color: #FFFDF5; 
+      font-family: 'Segoe UI', 'Kanit', Tahoma, sans-serif; 
+    }
+    .container { 
+      max-width: 500px; 
+      margin: 40px auto; 
+      background: #ffffff; 
+      border-radius: 30px; 
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(245, 224, 150, 0.3);
+      border: 1px solid #FDF2D2;
+    }
+    .header { 
+      background-color: #FFD95A; 
+      padding: 40px 20px; 
+      text-align: center; 
+    }
+    .header h1 { 
+      margin: 0; 
+      color: #5D4037; 
+      font-size: 26px;
+      letter-spacing: 1px;
+    }
+    .content { 
+      padding: 40px 30px; 
+      color: #5D4037;
+      line-height: 1.6;
+      text-align: center;
+    }
+    .user-name {
+      color: #8D6E63;
+      font-size: 20px;
+      display: block;
+      margin-bottom: 10px;
+    }
+    .button { 
+      display: inline-block; 
+      padding: 16px 40px; 
+      background-color: #FFD95A; 
+      color: #5D4037 !important; 
+      text-decoration: none; 
+      border-radius: 50px; 
+      margin: 30px 0; 
+      font-weight: bold; 
+      box-shadow: 0 4px 0 #F4B400;
+      transition: all 0.2s;
+    }
+    .footer { 
+      text-align: center; 
+      padding: 25px; 
+      background-color: #FFFEFA;
+      color: #A1887F; 
+      font-size: 13px;
+      border-top: 1px dashed #FDF2D2;
+    }
+    .cat-icon {
+      font-size: 45px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="cat-icon">🐾</div>
+      <h1>เหมียวมี เค้ก</h1>
+      <p style="margin: 5px 0 0; color: #8D6E63; font-size: 14px;">Happiness is Homemade</p>
+    </div>
+    
+    <div class="content">
+      <span class="user-name">สวัสดีคุณ <strong>${user_fullname}</strong> 🐱</span>
+      <p>ยินดีต้อนรับสู่ครอบครัวเหมียวมีนะคะ!<br>
+      กรุณากดปุ่มด้านล่างเพื่อยืนยันอีเมลและเริ่มสั่งขนมได้เลยค่ะ</p>
+      
+      <a href="${verificationUrl}" class="button">ยืนยันอีเมลตรงนี้เมี๊ยว~</a>
+      
+      <div style="margin-top: 20px;">
+        <p style="color: #A1887F; font-size: 13px; margin-bottom: 5px;">* ลิงก์นี้จะหมดอายุใน 24 ชั่วโมงเพื่อความปลอดภัย</p>
+        <p style="color: #A1887F; font-size: 13px; margin: 0;">หากคุณไม่ได้สมัครสมาชิก สามารถลบอีเมลนี้ทิ้งได้เลยค่ะ</p>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p><strong>MeawMee Cake & Bakery</strong>
+      
+      <p style="margin-top: 10px; opacity: 0.7;">© 2026 MeawMee Cake. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
     `;
     
     await sendVerifyEmail({
@@ -351,126 +504,175 @@ exports.resendVerification = async (req, res, next) => {
 // @desc    ขอรีเซ็ตรหัสผ่าน
 // @route   POST /api/auth/forgot-password
 // @access  Public
-exports.forgotPassword = async (req, res, next) => {
+exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     const user = await User.findOne({ email, isActive: true });
-    
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'ไม่พบอีเมลนี้ในระบบ'
-      });
+      return res.status(404).json({ message: "ไม่พบอีเมลนี้ในระบบ" });
     }
-    
-    if (user.authProvider !== 'local') {
+
+    if (user.authProvider !== "local") {
       return res.status(400).json({
-        success: false,
-        message: 'บัญชีนี้ลงทะเบียนผ่าน Google ไม่สามารถรีเซ็ตรหัสผ่านได้'
+        message: "บัญชีนี้เข้าสู่ระบบด้วย Google",
       });
     }
-    
+
     const resetToken = user.createResetPasswordToken();
     await user.save({ validateBeforeSave: false });
-    
+
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-    
-    const message = `
+
+    const html = `
       <!DOCTYPE html>
-      <html>
-      <body style="font-family: Arial, sans-serif;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2>🔐 รีเซ็ตรหัสผ่าน</h2>
-          <p>สวัสดีคุณ ${user.user_fullname}</p>
-          <p>คุณได้ขอรีเซ็ตรหัสผ่าน กรุณาคลิกปุ่มด้านล่าง:</p>
-          <a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #f97316; color: white; text-decoration: none; border-radius: 5px; margin: 15px 0;">รีเซ็ตรหัสผ่าน</a>
-          <p style="color: #666; font-size: 14px;">ลิงก์นี้จะหมดอายุใน 1 ชั่วโมง</p>
-          <p style="color: #999; font-size: 13px;">หากคุณไม่ได้ขอรีเซ็ตรหัสผ่าน กรุณาเพิกเฉยอีเมลนี้</p>
-        </div>
-      </body>
-      </html>
-    `;
-    
-    try {
-      await sendVerifyEmail({
-        email: user.email,
-        subject: '🔐 รีเซ็ตรหัสผ่าน - ร้านเบเกอร์รี่',
-        html: message
-      });
-      
-      res.status(200).json({
-        success: true,
-        message: 'ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว'
-      });
-    } catch (err) {
-      user.resetPasswordToken = undefined;
-      user.resetPasswordTokenExpiry = undefined;
-      await user.save({ validateBeforeSave: false });
-      
-      return res.status(500).json({
-        success: false,
-        message: 'ไม่สามารถส่งอีเมลได้ กรุณาลองใหม่อีกครั้ง'
-      });
+<html>
+<head>
+  <style>
+    .email-container {
+      max-width: 450px;
+      margin: 20px auto;
+      padding: 30px;
+      background-color: #ffffff;
+      border: 1px solid #fdf2d2;
+      border-radius: 24px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(245, 224, 150, 0.2);
     }
-  } catch (error) {
-    console.error('Forgot Password Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'เกิดข้อผิดพลาด'
+    .header-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+    h2 {
+      color: #8d6e63; /* สีน้ำตาลอบอุ่นเหมือนขนมปัง */
+      margin-top: 0;
+      font-size: 24px;
+    }
+    p {
+      color: #5d4037;
+      line-height: 1.6;
+      font-size: 16px;
+    }
+    .reset-button {
+      display: inline-block;
+      padding: 14px 32px;
+      margin: 20px 0;
+      background-color: #ffecb3; /* สีเหลืองนวล */
+      color: #5d4037 !important;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 50px;
+      transition: background-color 0.3s;
+    }
+    .footer-text {
+      font-size: 13px;
+      color: #a1887f;
+      margin-top: 25px;
+      border-top: 1px dashed #fdf2d2;
+      padding-top: 20px;
+    }
+  </style>
+</head>
+<body style="font-family: 'Kanit', Arial, sans-serif; background-color: #fffdf7; padding: 20px;">
+
+  <div class="email-container">
+    <div class="header-icon">🥐</div>
+    <h2>รีเซ็ตรหัสผ่าน</h2>
+    
+    <p>สวัสดีคุณ <strong>${user.user_fullname}</strong></p>
+    <p>เราได้รับคำขอเปลี่ยนรหัสผ่านสำหรับบัญชีของคุณ<br>คุณสามารถกดปุ่มด้านล่างเพื่อดำเนินการต่อได้เลยค่ะ</p>
+    
+    <a href="${resetUrl}" class="reset-button">ตั้งรหัสผ่านใหม่</a>
+    
+    <p class="footer-text">
+      * ลิงก์นี้จะหมดอายุภายใน 1 ชั่วโมง เพื่อความปลอดภัย<br>
+      หากคุณไม่ได้เป็นผู้ส่งคำขอนี้ สามารถเพิกเฉยต่ออีเมลฉบับนี้ได้ทันที
+    </p>
+  </div>
+
+</body>
+</html>
+    `;
+
+    await sendVerifyEmail({
+      email: user.email,
+      subject: "รีเซ็ตรหัสผ่าน",
+      html,
     });
+
+    // ✅ ส่งสำเร็จแล้ว → frontend จะพาไป login
+    res.json({ message: "ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลแล้ว" });
+  } catch (err) {
+    res.status(500).json({ message: "เกิดข้อผิดพลาด" });
   }
 };
 
 // @desc    รีเซ็ตรหัสผ่าน
 // @route   POST /api/auth/reset-password/:token
 // @access  Public
-exports.resetPassword = async (req, res, next) => {
+exports.resetPassword = async (req, res) => {
   try {
-    const resetPasswordToken = crypto
-      .createHash('sha256')
+    const hashedToken = crypto
+      .createHash("sha256")
       .update(req.params.token)
-      .digest('hex');
-    
+      .digest("hex");
+
     const user = await User.findOne({
-      resetPasswordToken,
-      resetPasswordTokenExpiry: { $gt: Date.now() }
+      resetPasswordToken: hashedToken,
+      resetPasswordTokenExpiry: { $gt: Date.now() },
     });
-    
+
     if (!user) {
       return res.status(400).json({
-        success: false,
-        message: 'ลิงก์รีเซ็ตรหัสผ่านไม่ถูกต้องหรือหมดอายุแล้ว'
+        message: "ลิงก์ไม่ถูกต้องหรือหมดอายุแล้ว",
       });
     }
-    
+
     const { password } = req.body;
-    
     if (!password || password.length < 6) {
       return res.status(400).json({
-        success: false,
-        message: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'
+        message: "รหัสผ่านต้องอย่างน้อย 6 ตัวอักษร",
       });
     }
-    
+
     user.password = password;
     user.resetPasswordToken = undefined;
     user.resetPasswordTokenExpiry = undefined;
     await user.save();
-    
-    res.status(200).json({
-      success: true,
-      message: 'รีเซ็ตรหัสผ่านสำเร็จ! คุณสามารถเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้แล้ว'
-    });
-  } catch (error) {
-    console.error('Reset Password Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'เกิดข้อผิดพลาด'
-    });
+
+    res.json({ message: "รีเซ็ตรหัสผ่านสำเร็จ" });
+  } catch (err) {
+    res.status(500).json({ message: "เกิดข้อผิดพลาด" });
   }
 };
 
+
+exports.verifyResetToken = async (req, res) => {
+  try {
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(req.params.token)
+      .digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordTokenExpiry: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(401).json({ valid: false });
+    }
+
+    return res.json({ valid: true });
+  } catch (err) {
+    return res.status(500).json({ valid: false });
+  }
+};
+
+
+// @desc    ข้อมูลผู้ใช้ปัจจุบัน
+// @route   GET /api/auth/me
+// @access  Private
 // @desc    ข้อมูลผู้ใช้ปัจจุบัน
 // @route   GET /api/auth/me
 // @access  Private
@@ -478,27 +680,44 @@ exports.getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
     
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'ไม่พบผู้ใช้'
+      });
+    }
+    
+    console.log('=== GET /api/auth/me ===');
+    console.log('User ID:', user._id);
+    console.log('Email:', user.email);
+    console.log('profileCompleted:', user.profileCompleted);
+    console.log('========================');
+    
     res.status(200).json({
       success: true,
       user: {
         id: user._id,
         email: user.email,
-        name: user.user_fullname,
+        user_fullname: user.user_fullname,  // ✅ ใช้ชื่อเดียวกับ DB
         role: user.role,
-        phone: user.user_phone,
-        birthDate: user.user_birthdate,
-        allergies: user.user_allergies,
-        isVerified: user.isEmailVerified,
-        authProvider: user.authProvider
+        user_phone: user.user_phone,
+        user_birthdate: user.user_birthdate,
+        user_allergies: user.user_allergies,
+        user_img: user.user_img,
+        isEmailVerified: user.isEmailVerified,
+        authProvider: user.authProvider,
+        profileCompleted: user.profileCompleted  // ✅ สำคัญมาก!
       }
     });
   } catch (error) {
+    console.error('Get Me Error:', error);
     res.status(500).json({
       success: false,
       message: 'เกิดข้อผิดพลาด'
     });
   }
 };
+
 
 // @desc    ออกจากระบบ
 // @route   POST /api/auth/logout
@@ -527,39 +746,124 @@ exports.googleAuth = passport.authenticate('google', {
 // @access  Public
 exports.googleAuthCallback = (req, res, next) => {
   passport.authenticate('google', { session: false }, async (err, user) => {
+
+    console.log("🔥 GOOGLE CALLBACK USER:");
+    console.log("ID:", user?._id);
+    console.log("Email:", user?.email);
+    console.log("profileCompleted:", user?.profileCompleted);
+
     if (err || !user) {
-      return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed`);
+      console.log("❌ GOOGLE AUTH FAILED");
+      return res.redirect(
+        `${process.env.FRONTEND_URL}/login?error=google_failed`
+      );
     }
-    
-    // *** เพิ่มการตรวจสอบการยืนยันอีเมลตรงนี้ ***
-    if (!user.isEmailVerified) {
-      // ดีดไปหน้า verify-email (แบบไม่มี token) เพื่อให้แสดงหน้า "กรุณาเช็คเมล"
-      return res.redirect(`${process.env.FRONTEND_URL}/verify-email?status=info`);
-    }
-    
-    // 🟡 verify แล้ว แต่ยังกรอกข้อมูลไม่ครบ
-    if (!user.profileCompleted) {
-      const token = generateToken(user._id);
-      return res.redirect(`${process.env.FRONTEND_URL}/complete-profile?token=${token}`);
-    }
-    // ถ้า verify แล้ว ถึงจะสร้าง token ให้เข้าสู่ระบบได้
-    
-    
-    // Redirect พร้อม token
+
     const token = generateToken(user._id);
-    res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+    console.log("🔑 GENERATED TOKEN:", token);
+
+    
+    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${token}&profileCompleted=${user.profileCompleted}`;
+
+
+    console.log("➡️ REDIRECT TO:", redirectUrl);
+
+    return res.redirect(redirectUrl);
   })(req, res, next);
 };
 
-exports.completeProfile = async (req, res) => {
-  const user = await User.findById(req.user.id);
 
-  user.user_phone ??= req.body.user_phone;
-  user.user_birthdate ??= req.body.user_birthdate;
-  user.user_allergies = req.body.user_allergies || [];
+exports.completeProfile = async (req, res, next) => {
+  try {
+    const { user_phone, user_birthdate, user_allergies } = req.body;
+    
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'ไม่พบผู้ใช้'
+      });
+    }
+    
+    // ตรวจสอบว่ากรอกข้อมูลครบหรือไม่
+    if (!user_phone || !user_birthdate) {
+      return res.status(400).json({
+        success: false,
+        message: 'กรุณากรอกข้อมูลให้ครบถ้วน'
+      });
+    }
+    
+    // อัพเดตข้อมูล
+    user.user_phone = user_phone;
+    user.user_birthdate = user_birthdate;
+    user.user_allergies = user_allergies || [];
+    user.profileCompleted = true; // ✅ สำคัญมาก!
+    
+    await user.save({ validateBeforeSave: false });
+    
+    res.status(200).json({
+      success: true,
+      message: 'บันทึกข้อมูลสำเร็จ',
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.user_fullname,
+        phone: user.user_phone,
+        birthDate: user.user_birthdate,
+        allergies: user.user_allergies,
+        profileCompleted: user.profileCompleted
+      }
+    });
+  } catch (error) {
+    console.error('Complete Profile Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาด'
+    });
+  }
+};
 
-  user.profileCompleted = true;
-  await user.save();
-
-  res.json({ success: true });
+// @desc    อัพเดตข้อมูลผู้ใช้ (สำหรับ Google Login)
+// @route   PUT /api/auth/update-profile
+// @access  Private
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const { user_phone, user_birthdate, user_allergies } = req.body;
+    
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'ไม่พบผู้ใช้'
+      });
+    }
+    
+    // อัพเดตเฉพาะข้อมูลที่ส่งมา
+    if (user_phone) user.user_phone = user_phone;
+    if (user_birthdate) user.user_birthdate = user_birthdate;
+    if (user_allergies !== undefined) user.user_allergies = user_allergies;
+    
+    await user.save({ validateBeforeSave: false });
+    
+    res.status(200).json({
+      success: true,
+      message: 'อัพเดตข้อมูลสำเร็จ',
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.user_fullname,
+        phone: user.user_phone,
+        birthDate: user.user_birthdate,
+        allergies: user.user_allergies
+      }
+    });
+  } catch (error) {
+    console.error('Update Profile Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาด'
+    });
+  }
 };

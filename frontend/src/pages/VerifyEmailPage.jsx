@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import authAPI from "../services/authService";
 import { Container, Spinner } from "react-bootstrap";
 import axios from "axios";
+import authAPI from "../services/authService";
 
 export default function VerifyEmailPage() {
   const { token } = useParams();
@@ -12,91 +12,69 @@ export default function VerifyEmailPage() {
 
   const statusParam = query.get("status");
   const emailParam = query.get("email");
-  const isGoogleUserParam = query.get("isGoogleUser") === "true"; // 🔑 เช็ค Google login
-  const userIdParam = query.get("userId"); // 🔑 ใช้สำหรับ ResetPasswordPage
 
   const [status, setStatus] = useState("loading");
   const [message, setMessage] = useState("");
   const [countdown, setCountdown] = useState(5);
 
-  const hasVerified = useRef(false); // ป้องกัน verify ซ้ำ
+  const hasVerified = useRef(false);
 
   useEffect(() => {
-    // ถ้าเป็น Google user และไม่มี token → ไปหน้า ResetPasswordPage เลย
-    if (!token && isGoogleUserParam) {
-      navigate(`/reset-password/${userIdParam}`, { replace: true });
-      return;
-    }
-
     const verifyEmail = async () => {
-      // ---------- INFO MODE (ไม่มี token แต่ status=info) ----------
+      // 🔹 Info mode (หลังสมัครเสร็จ แต่ยังไม่คลิกลิงก์)
       if (!token && statusParam === "info") {
         setStatus("info");
         setMessage(
-          `เราได้ส่งลิงก์ยืนยันไปที่ ${emailParam || "อีเมลของคุณ"} แล้ว กรุณาตรวจสอบและยืนยันเพื่อเข้าสู่ระบบ`
+          `เราได้ส่งลิงก์ยืนยันไปที่ ${
+            emailParam || "อีเมลของคุณ"
+          } แล้ว กรุณาตรวจสอบและยืนยันเพื่อเข้าสู่ระบบ`
         );
         return;
       }
 
+      // 🔹 ไม่มี token
       if (!token) {
         setStatus("info");
         setMessage(
-          "กรุณาตรวจสอบอีเมลของคุณและคลิกลิงก์ยืนยัน หากไม่ได้รับอีเมล ให้ขอส่งอีเมลยืนยันใหม่"
+          "กรุณาตรวจสอบอีเมลของคุณและคลิกลิงก์ยืนยัน หากไม่ได้รับอีเมล สามารถขอส่งอีเมลยืนยันใหม่ได้"
         );
         return;
       }
 
+      // 🔹 กันยิง API ซ้ำ
       if (hasVerified.current) return;
       hasVerified.current = true;
 
       try {
-        const response = await authAPI.verifyEmail(token);
+        const res = await authAPI.verifyEmail(token);
 
-        const { user } = response;
+        if (res.success) {
+          setStatus("success");
+          setMessage("ยืนยันอีเมลสำเร็จ! กำลังนำคุณไปหน้าเข้าสู่ระบบ...");
 
-        
-
-        if (response.success) { // <<< ใช้ response.success ไม่ใช่ user.success
-    if (user?.isGoogleUser) {
-      navigate("/update", {
-        state: {
-          isRegisterWithGoogle: true,
-          fullname: user.fullname,
-          email: user.email,
-          userId: user._id,
-        },
-        replace: true,
-      });
-      return;
-    }
-
-    // สำหรับ user ปกติ → success + countdown ไป Dashboard
-    setStatus("success");
-    setMessage("ยืนยันอีเมลสำเร็จ! คุณจะไปยังหน้า Dashboard");
-
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          navigate("/dashboard", { replace: true });
-          return 0;
+          const timer = setInterval(() => {
+            setCountdown((prev) => {
+              if (prev <= 1) {
+                clearInterval(timer);
+                navigate("/login", { replace: true });
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
         }
-        return prev - 1;
-      });
-    }, 1000);
-  }
       } catch (error) {
         setStatus("error");
 
         if (axios.isAxiosError(error)) {
-          const errorMessage = error.response?.data?.message;
+          const msg = error.response?.data?.message || "";
 
-          if (errorMessage?.includes("หมดอายุ")) {
+          if (msg.includes("หมดอายุ")) {
             setMessage("ลิงก์ยืนยันหมดอายุแล้ว กรุณาขอลิงก์ใหม่");
-          } else if (errorMessage?.includes("ไม่ถูกต้อง")) {
+          } else if (msg.includes("ไม่ถูกต้อง")) {
             setMessage("ลิงก์ยืนยันไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง");
           } else {
-            setMessage(errorMessage || "เกิดข้อผิดพลาดในการยืนยันอีเมล");
+            setMessage(msg || "เกิดข้อผิดพลาดในการยืนยันอีเมล");
           }
         } else {
           setMessage("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง");
@@ -105,7 +83,7 @@ export default function VerifyEmailPage() {
     };
 
     verifyEmail();
-  }, [token, statusParam, emailParam, isGoogleUserParam, userIdParam, navigate]);
+  }, [token, statusParam, emailParam, navigate]);
 
   const handleResendEmail = () => {
     navigate("/login", {
@@ -115,67 +93,120 @@ export default function VerifyEmailPage() {
 
   return (
     <Container
-      fluid
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-        backgroundColor: "#f8f9fa",
-        padding: "40px 20px",
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: "60px 40px",
-          borderRadius: "16px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-          maxWidth: "500px",
-          width: "100%",
-          textAlign: "center",
-        }}
-      >
-        {/* Loading State */}
-        {status === "loading" && (
-          <>
-            <Spinner animation="border" variant="warning" style={{ width: "60px", height: "60px", marginBottom: "24px" }} />
-            <h4 style={{ fontWeight: "bold", marginBottom: "12px" }}>กำลังยืนยันอีเมล...</h4>
-            <p style={{ color: "#666", fontSize: "16px" }}>กรุณารอสักครู่ ระบบกำลังดำเนินการ</p>
-          </>
-        )}
+  fluid
+  style={{
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: "100vh",
+    backgroundColor: "#FFFDF5", // สีครีมนวลๆ เหมือนแป้ง
+    padding: "40px 20px",
+  }}
+>
+  <div
+    style={{
+      backgroundColor: "white",
+      padding: "50px 40px",
+      borderRadius: "32px", // โค้งมนแบบละมุน
+      boxShadow: "0 10px 30px rgba(245, 224, 150, 0.3)", // เงาสีทองอ่อนๆ
+      maxWidth: "480px",
+      width: "100%",
+      textAlign: "center",
+      border: "1px solid #FDF2D2"
+    }}
+  >
+    {/* ส่วน Icon ด้านบนเพื่อความน่ารัก */}
+    
 
-        {/* Success State */}
-        {status === "success" && (
-          <>
-            <div style={{ width: "80px", height: "80px", borderRadius: "50%", backgroundColor: "#d4edda", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: "40px" }}>✓</div>
-            <h3 style={{ color: "#28a745", marginBottom: "16px", fontWeight: "bold", fontSize: "28px" }}>ยืนยันอีเมลสำเร็จ!</h3>
-            <p style={{ color: "#666", marginBottom: "24px" }}>{message}</p>
+    {status === "loading" && (
+      <>
+        <Spinner 
+          animation="border" 
+          style={{ width: 60, height: 60, marginBottom: 24, color: "#FFD95A" }} 
+        />
+        <h4 style={{ fontWeight: "bold", color: "#8D6E63", marginBottom: 12 }}>กำลังอบข้อมูล...</h4>
+        <p style={{ color: "#A1887F" }}>กรุณารอสักครู่ ระบบกำลังยืนยันอีเมลให้คุณค่ะ</p>
+      </>
+    )}
 
-            <div style={{ padding: "20px", backgroundColor: "#FFF9E6", borderRadius: "8px", marginBottom: "24px" }}>
-              กำลังนำคุณไปยังหน้าเข้าสู่ระบบใน <strong style={{ fontSize: "22px", color: "#FBBC05" }}>{countdown}</strong> วินาที
-            </div>
-          </>
-        )}
+    {status === "success" && (
+      <>
+        <div
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: "50%",
+            backgroundColor: "#E8F5E9", // สีเขียวมัทฉะอ่อนๆ
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 24px",
+            fontSize: 40,
+            color: "#4CAF50"
+          }}
+        >
+          ✨
+        </div>
+        <h3 style={{ color: "#6D8B74", fontWeight: "bold", marginBottom: 16 }}>ยืนยันอีเมลสำเร็จ</h3>
+        <p style={{ color: "#8D6E63", marginBottom: 24 }}>{message}</p>
+        <div
+          style={{
+            padding: "20px",
+            backgroundColor: "#FFF9E6",
+            borderRadius: "16px",
+            border: "1px dashed #FFD95A",
+            color: "#5D4037"
+          }}
+        >
+          กำลังนำคุณไปหน้าเข้าสู่ระบบ{" "}
+          <strong style={{ fontSize: 24, color: "#F4B400" }}>{countdown}</strong>{" "}
+          วินาที
+        </div>
+      </>
+    )}
 
-        {/* Info State */}
-        {status === "info" && (
-          <>
-            <h3>กรุณายืนยันอีเมล</h3>
-            <p>{message}</p>
-            <button onClick={handleResendEmail}>ขอส่งอีเมลยืนยันใหม่</button>
-          </>
-        )}
+    {status === "info" && (
+      <>
+        <h3 style={{ color: "#8D6E63", fontWeight: "bold", marginBottom: 16 }}>กรุณายืนยันอีเมล</h3>
+        <p style={{ color: "#A1887F", marginBottom: 24 }}>{message}</p>
+        <button 
+          className="btn" 
+          onClick={handleResendEmail}
+          style={{ 
+            backgroundColor: "#FFD95A", 
+            color: "#5D4037", 
+            fontWeight: "bold", 
+            borderRadius: "50px",
+            padding: "10px 30px",
+            border: "none"
+          }}
+        >
+          กลับไปหน้าเข้าสู่ระบบ
+        </button>
+      </>
+    )}
 
-        {/* Error State */}
-        {status === "error" && (
-          <>
-            <h3 style={{ color: "red" }}>เกิดข้อผิดพลาด</h3>
-            <p>{message}</p>
-            <button onClick={() => navigate("/login")}>กลับไปหน้าเข้าสู่ระบบ</button>
-          </>
-        )}
-      </div>
-    </Container>
+    {status === "error" && (
+      <>
+        <div style={{ fontSize: "50px", marginBottom: "10px" }}>🥨</div>
+        <h3 style={{ color: "#E57373", fontWeight: "bold", marginBottom: 16 }}>อุ๊ปส์! มีบางอย่างผิดพลาด</h3>
+        <p style={{ color: "#A1887F", marginBottom: 24 }}>{message}</p>
+        <button 
+          className="btn" 
+          onClick={() => navigate("/login")}
+          style={{ 
+            backgroundColor: "#8D6E63", 
+            color: "white", 
+            borderRadius: "50px",
+            padding: "10px 30px",
+            border: "none"
+          }}
+        >
+          กลับไปตั้งหลักใหม่
+        </button>
+      </>
+    )}
+  </div>
+</Container>
   );
 }

@@ -126,7 +126,7 @@ export default function Register() {
               />
               <InputField
                 label="อีเมล"
-                placeholder="example@gmail.com"
+                placeholder="อีเมล"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -142,6 +142,9 @@ export default function Register() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                  <p style={{ fontSize: "12px", color: "red" }}>
+                    กรุณากรอกรหัสผ่านอย่างน้อย 6 ตัวอักษรขึ้นไป
+                  </p>
                 </>
               ) : null}
               <Row>

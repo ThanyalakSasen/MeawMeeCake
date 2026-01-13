@@ -31,12 +31,18 @@ export const authAPI = {
     return response.data;
   },
 
-  async updateUser(userData) {
-  const response = await api.put('/api/user/update', userData);
-  return response.data;
-},
+   //✅ กรอกข้อมูลครั้งแรก (หลัง Google Login)
+  async completeProfile(userData) {
+    const response = await api.put('/api/auth/complete-profile', userData);
+    return response.data;
+  },
 
-  
+  // ✅ อัพเดตข้อมูล (แก้ไขภายหลัง)
+  async updateProfile(userData) {
+    const response = await api.put('/api/auth/update-profile', userData);
+    return response.data;
+  },
+
   // ลืมรหัสผ่าน
   async forgotPassword(email) {
     const response = await api.post('/api/auth/forgot-password', { email });
@@ -64,7 +70,7 @@ export const authAPI = {
   
   // Google OAuth URL
   getGoogleAuthUrl() {
-    return `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/google`;
+    return `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/google`;
   }
 };
 

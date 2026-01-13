@@ -15,8 +15,8 @@ require("./config/passport");
 require("./models/usersModel");
 
 const authRoutes = require("./routes/authRoutes");
-const emailRoutes = require("./routes/authRoutes");
-const userRoutes = require("./routes/userRoutes");
+const emailRoutes = require("./routes/emailRoutes");
+
 
 
 const app = express();
@@ -62,7 +62,7 @@ app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/email", emailRoutes);
-app.use("/api/user", userRoutes);
+
 
 
 app.use((err, req, res, next) => {
