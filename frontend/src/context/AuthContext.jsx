@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     const token = localStorage.getItem("token");
-    console.log("🔐 CHECK AUTH TOKEN:", token);
+    //console.log("🔐 CHECK AUTH TOKEN:", token);
 
     if (!token) {
       setLoading(false);

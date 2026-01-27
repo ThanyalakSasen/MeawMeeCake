@@ -27,7 +27,7 @@ export default function AuthCallback() {
     const init = async () => {
       const user = await checkAuth();
 
-      console.log("👤 USER FROM CHECKAUTH:", user);
+      //console.log("👤 USER FROM CHECKAUTH:", user);
 
       if (!user) {
         navigate("/login");

@@ -1,38 +1,97 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import authAPI from "../services/authService";
 import { InputField } from "../components/InputField";
 import InputDate from "../components/inputDate";
-import { Select } from "../components/select";
+import { SelectInput } from "../components/select";
 import ButtonSubmit from "../components/button";
 import axios from "axios";
 import { Col, Container, Row, Form } from "react-bootstrap";
 import loginPicture from "../assets/pictures/LoginRegisterPicture.png";
 
-// ตัวอย่างรายการวัตถุดิบที่อาจแพ้
-const allergyOptions = [
-  { value: "milk", label: "นม" },
-  { value: "eggs", label: "ไข่" },
-  { value: "peanuts", label: "ถั่วลิสง" },
-  { value: "soy", label: "ถั่วเหลือง" },
-  { value: "wheat", label: "ข้าวสาลี/กลูเตน" },
-  { value: "fish", label: "ปลา" },
-  { value: "shellfish", label: "อาหารทะเล" },
-  { value: "nuts", label: "ถั่วต่างๆ" },
-];
-
 export default function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isRegisterWithGoogle = location.state?.isRegisterWithGoogle;
+  const googleId = location.state?.googleId || "";
+
+  // State สำหรับข้อมูลผู้ใช้
   const [fullname, setFullname] = useState("");
   const [birthdate, setBirthdate] = useState("");
   const [email, setEmail] = useState("");
-  const googleId = useLocation().state?.googleId || "";
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
+  
+  // State สำหรับอาการแพ้
   const [hasAllergies, setHasAllergies] = useState(null);
   const [selectedAllergy, setSelectedAllergy] = useState("");
   const [selectedAllergies, setSelectedAllergies] = useState([]);
+  
+  // State สำหรับ UI
   const [loading, setLoading] = useState(false);
+  const [allergyOptions, setAllergyOptions] = useState([]);
+  const [loadingIngredients, setLoadingIngredients] = useState(true);
+
+useEffect(() => {
+  const fetchIngredients = async () => {
+    try {
+      setLoadingIngredients(true);
+      console.log('🚀 Starting fetch ingredients...');
+      
+      const url = 'http://localhost:3000/api/ingredients';
+      console.log('📍 Fetching from:', url);
+      
+      const response = await axios.get(url);
+      
+      console.log('✅ Response received:', response);
+      console.log('📦 Response status:', response.status);
+      console.log('📋 Response data:', response.data);
+      console.log('🔍 Success flag:', response.data?.success);
+      console.log('🗂️ Data array:', response.data?.data);
+      
+      if (response.data && response.data.success && response.data.data) {
+        console.log('✨ Processing ingredients...');
+        
+        const formattedOptions = response.data.data.map((ingredient) => {
+          console.log('🔧 Formatting:', ingredient);
+          return {
+            value: ingredient._id,
+            label: ingredient.ingredient_name
+          };
+        });
+        
+        console.log('✅ Formatted options:', formattedOptions);
+        setAllergyOptions(formattedOptions);
+        console.log('💾 State updated!');
+      } else {
+        console.warn('⚠️ Response structure unexpected:', response.data);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching ingredients:', error);
+      console.error('📛 Error message:', error.message);
+      console.error('🔴 Error response:', error.response?.data);
+      console.error('📊 Error status:', error.response?.status);
+      
+      // ถ้าดึงข้อมูลไม่สำเร็จ ให้ใช้ข้อมูลสำรอง
+      console.log('🔄 Using fallback data...');
+      setAllergyOptions([
+        { value: "milk", label: "นม" },
+        { value: "eggs", label: "ไข่" },
+        { value: "peanuts", label: "ถั่วลิสง" },
+        { value: "soy", label: "ถั่วเหลือง" },
+        { value: "wheat", label: "ข้าวสาลี/กลูเตน" },
+        { value: "fish", label: "ปลา" },
+        { value: "shellfish", label: "อาหารทะเล" },
+        { value: "nuts", label: "ถั่วต่างๆ" },
+      ]);
+    } finally {
+      setLoadingIngredients(false);
+      console.log('🏁 Fetch complete');
+    }
+  };
+
+  fetchIngredients();
+}, []);
 
   const handleHasAllergiesChange = (value) => {
     setHasAllergies(value);
@@ -89,9 +148,6 @@ export default function Register() {
     }
   };
 
-  const location = useLocation();
-  const isRegisterWithGoogle = location.state?.isRegisterWithGoogle;
-
   return (
     <Container fluid>
       <Row style={{ display: "flex", width: "100%" }}>
@@ -147,6 +203,7 @@ export default function Register() {
                   </p>
                 </>
               ) : null}
+              
               <Row>
                 <Col md={6}>
                   <InputDate
@@ -226,24 +283,25 @@ export default function Register() {
                     }}
                   >
                     <div style={{ flex: 1 }}>
-                      <Select
+                      <SelectInput
                         options={allergyOptions}
                         value={selectedAllergy}
                         onChange={(e) => setSelectedAllergy(e.target.value)}
-                        placeholder="เลือกวัตถุดิบที่แพ้"
+                        placeholder={loadingIngredients ? "กำลังโหลด..." : "เลือกวัตถุดิบที่แพ้"}
+                        disabled={loadingIngredients}
                       />
                     </div>
                     <button
                       type="button"
                       onClick={handleAddAllergy}
-                      disabled={!selectedAllergy}
+                      disabled={!selectedAllergy || loadingIngredients}
                       style={{
                         padding: "8px 16px",
                         backgroundColor: "#FBBC05",
                         border: "none",
                         borderRadius: "4px",
-                        cursor: selectedAllergy ? "pointer" : "not-allowed",
-                        opacity: selectedAllergy ? 1 : 0.6,
+                        cursor: selectedAllergy && !loadingIngredients ? "pointer" : "not-allowed",
+                        opacity: selectedAllergy && !loadingIngredients ? 1 : 0.6,
                         fontWeight: "500",
                         height: "38px",
                         whiteSpace: "nowrap",

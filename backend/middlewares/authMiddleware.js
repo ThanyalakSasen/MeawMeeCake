@@ -1,7 +1,8 @@
-// middleware/auth.js
+// middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 const User = require('../models/usersModel');
 
+// Middleware ตรวจสอบ authentication
 exports.protect = async (req, res, next) => {
   let token;
   
@@ -37,4 +38,17 @@ exports.protect = async (req, res, next) => {
       message: 'Token ไม่ถูกต้อง'
     });
   }
+};
+
+// Middleware ตรวจสอบ authorization (บทบาท)
+exports.authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: `บทบาท ${req.user.role} ไม่มีสิทธิ์เข้าถึงส่วนนี้`
+      });
+    }
+    next();
+  };
 };

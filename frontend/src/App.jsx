@@ -1,15 +1,17 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/LoginPage';
+import { Routes, Route, Navigate } from "react-router-dom";
+import Login from "./pages/LoginPage";
 import Register from "./pages/RegisterPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import Dashboard from "./pages/DashboardPage";
-import ProtectedRoute from './components/ProtectedRoute';
+import EmployeeManage from "./pages/EmployeeManage";
+import CreateUserForAdmin from "./pages/CreateUserForAdmin";
+import ProtectedRoute from "./components/ProtectedRoute";
 import "react-datepicker/dist/react-datepicker.css";
-import AuthCallback from './pages/AuthCallback';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import CompleteProfile from './pages/CompleteProfile';
-import UpdateProfile from './pages/UpdatePage'
+import AuthCallback from "./pages/AuthCallback";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import CompleteProfile from "./pages/CompleteProfile";
+import UpdateProfile from "./pages/UpdatePage";
 
 function App() {
   return (
@@ -24,10 +26,10 @@ function App() {
       <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-      
+
       {/* Google OAuth Callback */}
       <Route path="/auth/callback" element={<AuthCallback />} />
-      
+
       {/* Complete Profile (Protected - ต้องมี token) */}
       <Route
         path="/complete-profile"
@@ -37,11 +39,14 @@ function App() {
           </ProtectedRoute>
         }
       />
-      <Route path="/update" element={
-        <ProtectedRoute allowIncomplete>
+      <Route
+        path="/update"
+        element={
+          <ProtectedRoute allowIncomplete>
             <UpdateProfile />
-        </ProtectedRoute>
-} />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Dashboard (Protected - ต้อง profileCompleted: true) */}
       <Route
@@ -49,6 +54,26 @@ function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Employee Manage (Protected) */}
+      <Route
+        path="/employeeManage"
+        element={
+          <ProtectedRoute>
+            <EmployeeManage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Create User For Admin (Protected) */}
+      <Route
+        path="/create-employee"
+        element={
+          <ProtectedRoute>
+            <CreateUserForAdmin />
           </ProtectedRoute>
         }
       />

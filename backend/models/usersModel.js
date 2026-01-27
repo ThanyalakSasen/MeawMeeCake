@@ -53,6 +53,7 @@ const userSchema = new Schema({
     type: [String],
     default: []
   },
+
   emailVerifyToken: {
     type: String,
     default: null
@@ -68,6 +69,11 @@ const userSchema = new Schema({
   },
 
   // ===== Employee only =====
+  emp_id: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   emp_position: {
     type: Schema.Types.ObjectId,
     ref: 'Position',
@@ -95,15 +101,21 @@ const userSchema = new Schema({
       return this.role === 'Employee'
     }
   },
-
-  employee_salary: {
+  partTimeHours: {
     type: Number,
     required: function () {
-      return this.role === 'Employee'
+      return this.role === 'Employee' && this.employment_type === 'Part-time'
     }
   },
 
-  employee_status: {
+  emp_salary: {
+    type: Number,
+    required: function () {
+      return this.role === 'Employee' && this.employment_type === 'Full-time'
+    }
+  },
+
+  emp_status: {
     type: String,
     enum: ['Active', 'Inactive'],
     default: 'Active'
@@ -112,6 +124,10 @@ const userSchema = new Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  softDelete: {
+    type: Boolean,
+    default: false
   },
   resetPasswordToken: {
     type: String,

@@ -5,8 +5,9 @@ const cors = require("cors");
 const cookieParser = require('cookie-parser');
 const session = require("express-session");
 const passport = require("./config/passport");
-
 const helmet = require("helmet");
+const Fuse = require('fuse.js');
+
 const connectDB = require("./config/db");
 
 // ===== init =====
@@ -16,6 +17,8 @@ require("./models/usersModel");
 
 const authRoutes = require("./routes/authRoutes");
 const emailRoutes = require("./routes/emailRoutes");
+const ingredientRoutes = require("./routes/ingredientRoutes");
+
 
 
 
@@ -24,6 +27,10 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// เสิร์ฟไฟล์ static จากโฟลเดอร์ uploads
+app.use('/uploads', express.static('uploads'));
+
 app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true
@@ -49,6 +56,30 @@ app.use(
   })
 );
 
+// ===== fuse.js search setup =====
+let data = [];
+let fuse;
+
+async function loadData() {
+  const fs = require('fs');
+  const raw = fs.readFileSync('./data/geography.json', 'utf8');
+  data = JSON.parse(raw);  // Array of {provinceNameTh, districtNameTh, subdistrictNameTh, postalCode, ...}[web:1]
+  
+  fuse = new Fuse(data, {
+    keys: ['provinceNameTh', 'provinceNameEn', 'districtNameTh', 'districtNameEn', 'subdistrictNameTh', 'subdistrictNameEn', 'postalCode'],
+    threshold: 0.4,  // Fuzzy match tolerance
+    ignoreLocation: true
+  });
+}
+
+app.get('/search', (req, res) => {
+  const { q } = req.query;  // Text query, e.g., ?q=ลพบุรี or ?q=42
+  if (!q) return res.json([]);
+
+  const results = fuse.search(q).slice(0, 50);  // Top 50 matches
+  res.json(results.map(r => r.item));  // Returns full objects with hierarchy codes[web:1]
+});
+
 
 // ===== routes =====
 app.get("/", (req, res) => {
@@ -62,6 +93,7 @@ app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/email", emailRoutes);
+app.use('/api/ingredients', ingredientRoutes);
 
 
 

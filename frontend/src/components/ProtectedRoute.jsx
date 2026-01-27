@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 export default function ProtectedRoute({ children, allowIncomplete = false }) {
   const { user, loading } = useAuth();
 
-  console.log("🛡️ USER:", user);
+  //console.log("🛡️ USER:", user);
   console.log("🛡️ LOADING:", loading);
 
   if (loading) return <div>Loading...</div>;

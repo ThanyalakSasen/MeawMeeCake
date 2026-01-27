@@ -1,0 +1,96 @@
+.sidebar-link {
+  color: black;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-link:hover {
+  background-color: #ffca45;
+  color: black;
+}
+
+.sidebar-sub-link {
+  font-size: 14px;
+  color: black;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-sub-link:hover {
+  background-color: #ffca45;
+  color: black;
+}
+.sidebar-active {
+  background-color: #ffca45;
+  color: black;
+}
+
+/* ===== Sidebar container ===== */
+.sidebar-desktop {
+  background: #ffffff;
+  padding: 16px;
+  height: 100vh;
+  border-right: 1px solid #e5e7eb;
+}
+
+/* ===== Menu list ===== */
+.sidebar-menu {
+  gap: 10px;
+}
+
+/* ===== Menu card ===== */
+.sidebar-item {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* ===== Header ===== */
+.sidebar-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-item-header:hover {
+  background-color: #f8fafc;
+}
+
+.sidebar-item-header.active {
+  background-color: #f1f5f9;
+}
+
+/* ===== Chevron ===== */
+.chevron {
+  transition: transform 0.25s ease;
+  font-size: 14px;
+}
+
+.chevron.rotate {
+  transform: rotate(180deg);
+}
+
+/* ===== Submenu ===== */
+.sidebar-submenu {
+  border-top: 1px solid #e5e7eb;
+  padding: 6px 0;
+  background: #fafafa;
+}
+
+.sidebar-submenu-item {
+  font-size: 14px;
+  padding: 8px 16px;
+  color: #374151;
+}
+
+.sidebar-submenu-item:hover {
+  background-color: #e5e7eb;
+  color: #000;
+}

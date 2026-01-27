@@ -1,4 +1,5 @@
 import Button from "react-bootstrap/Button";
+import { Link } from "react-router-dom";
 
 
 const ButtonSubmit = ({ textButton, type, onClick, disabled, style }) => {
@@ -13,5 +14,6 @@ const ButtonSubmit = ({ textButton, type, onClick, disabled, style }) => {
         </Button>
     );
 };
+
 
 export default ButtonSubmit;
